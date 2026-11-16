@@ -68,7 +68,7 @@ specifiers to the version-pinned CDN bundles.
 - **Line strip.** The seek bar has a stop every 10%; the `0`–`9` keys jump to them.
 - **Scrub preview.** Frame and time under the pointer, from a storyboard track.
 - **Keyboard timetable.** `?` lists every shortcut as stops on a route; `Esc` closes it.
-- **Speed pill.** Shows the playback speed whenever it changes (`<` and `>`), then fades.
+- **Top speed badge.** Shows the playback speed whenever it changes (`<` and `>`), then fades.
 - **Hold for 2×.** Press and hold the footage while it plays; let go to return to the speed you had.
 - **Several players per page.** IDs are scoped per instance by `skin.js`.
 - **No dependencies beyond Video.js.** No webfont, icon library or framework.
