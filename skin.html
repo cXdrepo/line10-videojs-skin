@@ -245,5 +245,15 @@
       </svg>
       <media-seek-indicator-value></media-seek-indicator-value>
     </media-seek-indicator>
+    <!-- Playback speed: skin.js shows this on every speed change and keeps
+         it up while a press-and-hold is playing at 2× -->
+    <div class="l10-indicator l10-speed-indicator">
+      <svg class="l10-icon" viewBox="0 0 24 24" focusable="false">
+        <path d="M4.5 16.5a7.5 7.5 0 0 1 15 0" />
+        <path d="m12 16.5 3.6-5" />
+        <circle class="l10-solid" cx="12" cy="16.5" r="1.7" />
+      </svg>
+      <span class="l10-speed-value"></span>
+    </div>
   </div>
 </media-container>

@@ -167,3 +167,127 @@ document.addEventListener('keydown', (event) => {
   trigger.focus({ preventScroll: true });
   trigger.click();
 });
+
+/*
+ * Playback speed: the pill, and press-and-hold for 2×.
+ *
+ * The pill (.l10-speed-indicator) shows the speed whenever the media fires
+ * ratechange, whatever changed it: the < and > keys, a menu, or the hold
+ * below. It leaves 900ms after the last change, and stays for as long as a
+ * hold is playing at 2×.
+ *
+ * Pressing on the footage for 350ms while it is playing switches to 2×;
+ * letting go restores the speed it had. A press that drifts more than 10px
+ * first is a drag and never becomes a hold. Presses on the sign, a popup, a
+ * dialog or any control are left alone. Taps and double-taps still belong to
+ * <media-gesture>: nothing here calls preventDefault on a pointer event.
+ */
+const HOLD_DELAY = 350;
+const HOLD_SLOP = 10;
+const HOLD_RATE = 2;
+const SPEED_LINGER = 900;
+const HOLD_IGNORE = '.l10-controls, .l10-popup, .l10-dialog, .l10-dialog-backdrop, button, a, input, [role="button"], [role="slider"]';
+
+const speedTimers = new WeakMap();
+let hold = null;
+
+const isPlayer = (node) => node instanceof Element && node.matches('.line10');
+
+function showSpeed(player, rate) {
+  const pill = player.querySelector('.l10-speed-indicator');
+  if (!pill) return;
+
+  pill.querySelector('.l10-speed-value').textContent = `${Number(rate.toFixed(2))}×`;
+  pill.setAttribute('data-open', '');
+  clearTimeout(speedTimers.get(player));
+
+  // No timer while a hold is boosting this player. Letting go changes the
+  // speed again, and that call starts the countdown.
+  if (hold?.active && hold.player === player) return;
+  speedTimers.set(player, setTimeout(() => pill.removeAttribute('data-open'), SPEED_LINGER));
+}
+
+// Media events do not bubble, so this listens in the capture phase.
+document.addEventListener('ratechange', (event) => {
+  const player = event.composedPath().find(isPlayer);
+  const rate = event.target?.playbackRate;
+  if (player && typeof rate === 'number') showSpeed(player, rate);
+}, true);
+
+function trackHold(event) {
+  if (!hold || hold.active || event.pointerId !== hold.pointerId) return;
+  if (Math.hypot(event.clientX - hold.x, event.clientY - hold.y) > HOLD_SLOP) endHold(event);
+}
+
+function endHold(event) {
+  if (!hold || (event?.pointerId !== undefined && event.pointerId !== hold.pointerId)) return;
+
+  const { player, media, active, savedRate } = hold;
+  clearTimeout(hold.timer);
+  document.removeEventListener('pointermove', trackHold, true);
+  document.removeEventListener('pointerup', endHold, true);
+  document.removeEventListener('pointercancel', endHold, true);
+  window.removeEventListener('blur', endHold);
+  hold = null;
+  if (!active) return;
+
+  media.playbackRate = savedRate;
+  showSpeed(player, savedRate);
+
+  // Lifting after a hold is not a click on the footage. The listener removes
+  // itself if no click follows, so it cannot eat a later one.
+  if (event?.type === 'pointerup') {
+    const swallow = (click) => {
+      click.stopPropagation();
+      click.preventDefault();
+    };
+    document.addEventListener('click', swallow, { capture: true, once: true });
+    setTimeout(() => document.removeEventListener('click', swallow, true), 400);
+  }
+}
+
+document.addEventListener('pointerdown', (event) => {
+  if (hold || !event.isPrimary || event.button !== 0) return;
+
+  const path = event.composedPath();
+  const playerIndex = path.findIndex(isPlayer);
+  if (playerIndex === -1) return;
+  if (path.slice(0, playerIndex).some((node) => node instanceof Element && node.matches(HOLD_IGNORE))) return;
+
+  const player = path[playerIndex];
+  const media = [...player.children].find((child) => 'playbackRate' in child);
+  if (!media) return;
+
+  hold = {
+    player,
+    media,
+    pointerId: event.pointerId,
+    touch: event.pointerType !== 'mouse',
+    x: event.clientX,
+    y: event.clientY,
+    active: false,
+    savedRate: 1,
+    timer: setTimeout(() => {
+      // Nothing to speed up while paused or finished.
+      if (media.paused || media.ended) {
+        endHold();
+        return;
+      }
+      hold.savedRate = media.playbackRate;
+      hold.active = true;
+      media.playbackRate = HOLD_RATE;
+      showSpeed(player, HOLD_RATE);
+    }, HOLD_DELAY),
+  };
+
+  document.addEventListener('pointermove', trackHold, true);
+  document.addEventListener('pointerup', endHold, true);
+  document.addEventListener('pointercancel', endHold, true);
+  window.addEventListener('blur', endHold);
+});
+
+// A long touch press also asks for the context menu; during a hold it would
+// cover the footage.
+document.addEventListener('contextmenu', (event) => {
+  if (hold?.touch) event.preventDefault();
+}, true);

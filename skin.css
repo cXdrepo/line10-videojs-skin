@@ -993,6 +993,23 @@
   scale: -1 1;
 }
 
+/* Speed pill. skin.js drives it, not a Video.js component, so there are no
+   data-*-style phases to fade on: it stays laid out and fades with opacity,
+   and visibility follows once the fade is done. */
+.l10-speed-indicator:not([data-open]) {
+  display: flex;
+  visibility: hidden;
+  opacity: 0;
+  transition:
+    opacity var(--l10-fast) ease-out,
+    visibility 0s linear var(--l10-fast);
+}
+
+/* One pill at a time: a seek or volume pill takes the spot. */
+.l10-indicators:has(.l10-indicator[data-open]:not(.l10-speed-indicator)) .l10-speed-indicator {
+  display: none;
+}
+
 .l10-dialog-backdrop {
   position: absolute;
   inset: 0;
