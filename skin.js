@@ -177,7 +177,8 @@ document.addEventListener('keydown', (event) => {
  * hold is playing at 2×.
  *
  * Pressing on the footage for 350ms while it is playing switches to 2×;
- * letting go restores the speed it had. A press that drifts more than 10px
+ * letting go restores the speed it had, without bringing the controls back
+ * or pausing. A press that drifts more than 10px
  * first is a drag and never becomes a hold. Presses on the sign, a popup, a
  * dialog or any control are left alone. Taps and double-taps still belong to
  * <media-gesture>: nothing here calls preventDefault on a pointer event.
@@ -214,6 +215,18 @@ document.addEventListener('ratechange', (event) => {
   if (player && typeof rate === 'number') showSpeed(player, rate);
 }, true);
 
+// Stops the next event of one type before it reaches the player. The
+// listener removes itself if that event never comes, so it cannot eat a
+// later, unrelated one.
+function swallowNext(type) {
+  const swallow = (event) => {
+    event.stopImmediatePropagation();
+    if (event.cancelable) event.preventDefault();
+  };
+  document.addEventListener(type, swallow, { capture: true, once: true });
+  setTimeout(() => document.removeEventListener(type, swallow, true), 400);
+}
+
 function trackHold(event) {
   if (!hold || hold.active || event.pointerId !== hold.pointerId) return;
   if (Math.hypot(event.clientX - hold.x, event.clientY - hold.y) > HOLD_SLOP) endHold(event);
@@ -234,15 +247,15 @@ function endHold(event) {
   media.playbackRate = savedRate;
   showSpeed(player, savedRate);
 
-  // Lifting after a hold is not a click on the footage. The listener removes
-  // itself if no click follows, so it cannot eat a later one.
+  // The release belongs to the hold, not to the player. Stopping it here, in
+  // the capture phase, keeps it from <media-container>, which would count it
+  // as activity and bring the controls back. The touchend and click that
+  // follow a release are stopped the same way. A press shorter than the hold
+  // delay never gets here, so taps still reach the player untouched.
   if (event?.type === 'pointerup') {
-    const swallow = (click) => {
-      click.stopPropagation();
-      click.preventDefault();
-    };
-    document.addEventListener('click', swallow, { capture: true, once: true });
-    setTimeout(() => document.removeEventListener('click', swallow, true), 400);
+    event.stopImmediatePropagation();
+    swallowNext('touchend');
+    swallowNext('click');
   }
 }
 

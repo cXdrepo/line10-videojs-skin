@@ -993,7 +993,23 @@
   scale: -1 1;
 }
 
-/* Speed pill. skin.js drives it, not a Video.js component, so there are no
+/* Speed badge: a small status tag on the top edge, out of the way of the
+   footage and of the seek and volume pills in the middle. Text only; the
+   icon in the markup is not drawn. It keeps the enamel surface and takes the
+   sign's keyline as its edge. */
+.l10-speed-indicator {
+  align-self: start;
+  margin-top: calc(var(--l10-u) * 2.5);
+  padding: calc(var(--l10-u) * 0.75) calc(var(--l10-u) * 2.5);
+  border: 1px solid var(--l10-keyline);
+  font-size: 0.75rem;
+}
+
+.l10-speed-indicator svg {
+  display: none;
+}
+
+/* skin.js drives the badge, not a Video.js component, so there are no
    data-*-style phases to fade on: it stays laid out and fades with opacity,
    and visibility follows once the fade is done. */
 .l10-speed-indicator:not([data-open]) {
@@ -1003,11 +1019,6 @@
   transition:
     opacity var(--l10-fast) ease-out,
     visibility 0s linear var(--l10-fast);
-}
-
-/* One pill at a time: a seek or volume pill takes the spot. */
-.l10-indicators:has(.l10-indicator[data-open]:not(.l10-speed-indicator)) .l10-speed-indicator {
-  display: none;
 }
 
 .l10-dialog-backdrop {
