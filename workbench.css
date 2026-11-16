@@ -1,0 +1,223 @@
+/* Styles for the test page only. Nothing here is part of the skin. */
+
+:root {
+  color-scheme: light dark;
+  --wb-bg: #f3f2ee;
+  --wb-surface: #ffffff;
+  --wb-text: #17181a;
+  --wb-muted: #55595f;
+  --wb-border: #c9c8c2;
+  --wb-accent: #17181a;
+  --wb-on-accent: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --wb-bg: #141516;
+    --wb-surface: #1e2022;
+    --wb-text: #f1f1ee;
+    --wb-muted: #b3b6bb;
+    --wb-border: #44474c;
+    --wb-accent: #f1f1ee;
+    --wb-on-accent: #141516;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--wb-bg);
+  color: var(--wb-text);
+  font: 16px/1.5 Inter, "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
+}
+
+.wb {
+  display: grid;
+  gap: 24px;
+  width: min(100%, 1344px);
+  margin: 0 auto;
+  padding: 32px 32px 64px;
+}
+
+.wb-head h1 {
+  margin: 0 0 4px;
+  font-size: 28px;
+  line-height: 1.2;
+}
+
+.wb-head p {
+  max-width: 68ch;
+  margin: 0;
+  color: var(--wb-muted);
+}
+
+.wb-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 32px;
+}
+
+.wb-switch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.wb-switch legend {
+  float: left;
+  margin-right: 4px;
+  padding: 0;
+  color: var(--wb-muted);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.wb-switch label {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--wb-border);
+  border-radius: 8px;
+  background: var(--wb-surface);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.wb-switch input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.wb-switch label:has(input:checked) {
+  border-color: var(--wb-accent);
+  background: var(--wb-accent);
+  color: var(--wb-on-accent);
+}
+
+.wb-switch label:has(input:focus-visible) {
+  outline: 3px solid var(--wb-accent);
+  outline-offset: 2px;
+}
+
+/* Line colour: each option carries a dot of its colour. The ring keeps the
+   dot visible on both the resting and the selected button. */
+.wb-swatches label::before {
+  content: "";
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: var(--swatch);
+  box-shadow: 0 0 0 1px var(--wb-surface), 0 0 0 2px var(--wb-border);
+}
+
+.wb-stage {
+  width: 100%;
+  max-width: 1280px;
+  aspect-ratio: 1280 / 720;
+}
+
+.wb-stage[data-size="mobile"] {
+  width: 375px;
+  max-width: 100%;
+  aspect-ratio: 375 / 211;
+}
+
+.wb-stage video-player {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Worst cases for control contrast: the real video keeps playing (so time,
+   seeking and buffering all still work) but renders as flat white or black.
+   The filter goes on the media element itself (the <video> inside <mux-video>
+   is in a shadow root, out of reach) and on the skin's poster, which covers
+   the media until playback starts. */
+.wb-stage[data-footage="white"] :is(video, mux-video, media-poster) {
+  filter: brightness(0) invert(1);
+}
+
+.wb-stage[data-footage="black"] :is(video, mux-video, media-poster) {
+  filter: brightness(0);
+}
+
+.wb-notes {
+  max-width: 68ch;
+}
+
+.wb-notes h2,
+.wb-specs h2 {
+  margin: 0 0 8px;
+  font-size: 18px;
+}
+
+.wb-notes ol {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--wb-muted);
+}
+
+.wb-notes li + li {
+  margin-top: 4px;
+}
+
+.wb-specs {
+  max-width: 1280px;
+  padding: 20px 24px 24px;
+  border: 1px solid var(--wb-border);
+  border-radius: 12px;
+  background: var(--wb-surface);
+}
+
+.wb-specs dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px 32px;
+  margin: 12px 0 0;
+}
+
+.wb-specs dt {
+  color: var(--wb-muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.wb-specs dd {
+  margin: 2px 0 0;
+  font-size: 15px;
+}
+
+kbd {
+  display: inline-block;
+  min-width: 1.6em;
+  padding: 0 6px;
+  border: 1px solid var(--wb-border);
+  border-radius: 4px;
+  background: var(--wb-surface);
+  color: var(--wb-text);
+  font: 600 13px/1.6 inherit;
+  font-family: inherit;
+  text-align: center;
+}
+
+@media (max-width: 640px) {
+  .wb {
+    padding: 16px 16px 48px;
+  }
+}

@@ -1,0 +1,1343 @@
+/*
+ * LINE 10 — a transit-wayfinding skin for Video.js v10.
+ *
+ * The idea: a player that reads like platform signage. Controls sit on an
+ * opaque enamel sign, the seek bar is a route line with ten stops (the same
+ * ten stops the 0–9 keys jump to), and the play button is the line's roundel.
+ * Signage is designed to be read instantly over any background, so contrast
+ * comes from the sign itself, never from the footage behind it.
+ *
+ * Contents
+ *   1. Tokens
+ *   2. Container and media
+ *   3. Controls surface and auto-hide
+ *   4. Header (line bullet + title)
+ *   5. Sign, bar, buttons, icons
+ *   6. Time display
+ *   7. Line strip (time slider) and scrub preview
+ *   8. Popups: tooltip, volume, keyboard timetable
+ *   9. Feedback: buffering, indicators, error dialog
+ *  10. Small players and touch
+ *  11. User preferences: contrast, transparency, forced colors, motion
+ */
+
+/* ------------------------------------------------------------------ 1. Tokens */
+
+.line10 {
+  /* One unit is a quarter of --media-scale-unit. Set --media-scale-unit on the
+     player or any ancestor; it defaults to 1rem so the skin follows the
+     reader's font-size preference. */
+  --l10-u: calc(var(--media-scale-unit, 1rem) / 4);
+
+  /* Colour. Contrast ratios are against the sign (#0C0D0F) blended over pure
+     white footage at --l10-sign-alpha, which is the worst case. */
+  --l10-enamel: #0c0d0f;
+  --l10-sign-alpha: 0.94;
+  --l10-sign: rgb(12 13 15 / var(--l10-sign-alpha));
+  --l10-ink: #ffffff; /* text, icons            17.1:1 */
+  --l10-ink-2: #c9ccd1; /* secondary text         10.6:1 */
+  --l10-line: var(--media-accent-color, #ffd200); /* the route  11.8:1 */
+  --l10-on-line: var(--media-accent-text-color, #0c0d0f); /* 13.4:1 on the line */
+  --l10-rail: #7d828a; /* route not yet travelled  4.4:1 */
+  --l10-rail-buffered: #b4b8bf; /* loaded        8.6:1 */
+  --l10-keyline: #9aa0a8; /* sign edge; 8.0:1 on black footage */
+  --l10-keyline-width: 1.5px;
+  --l10-hover: rgb(255 255 255 / 0.16);
+  --l10-divider: rgb(255 255 255 / 0.22);
+
+  /* Focus: a white ring sandwiched between two dark rings, so one of the two
+     always contrasts with whatever is behind it. */
+  --l10-focus-light: #ffffff;
+  --l10-focus-dark: #0c0d0f;
+
+  /* Shape and size */
+  --l10-radius: calc(var(--l10-u) * 2.5);
+  --l10-radius-sign: calc(var(--l10-u) * 4);
+  /* 48px at the default scale, and never smaller: the target keeps its size
+     when --media-scale-unit is set below 16px. */
+  --l10-target: max(48px, calc(var(--l10-u) * 12));
+  --l10-icon: calc(var(--l10-u) * 6);
+  --l10-stop: calc(var(--l10-u) * 2.5);
+  --l10-rail-width: calc(var(--l10-u) * 1.5);
+  --l10-strip: calc(var(--l10-u) * 8); /* height of the line strip row */
+  /* Popups open above the whole sign, not on top of the line strip. */
+  --l10-popup-offset: calc(var(--l10-strip) + var(--l10-u) * 6);
+  /* Distance from the bottom of the player to the top of the sign: the line
+     strip, the bar, and 8u of padding and gaps. Anything that has to stay
+     clear of the sign (indicators, buffering, captions) uses this. */
+  --l10-sign-clearance: calc(var(--l10-strip) + var(--l10-target) + var(--l10-u) * 8);
+
+  /* Motion */
+  --l10-fast: 120ms;
+  --l10-show: 160ms;
+  --l10-hide: 320ms;
+  --l10-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+/* ------------------------------------------------- 2. Container and media */
+
+.line10 {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  container: l10-root / inline-size;
+  border-radius: var(--media-border-radius, 0);
+  background: #000;
+  color: var(--l10-ink);
+  font-family: var(--media-font-family, "Inter", "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif);
+  font-size: calc(var(--l10-u) * 3.5);
+  font-weight: 600;
+  line-height: 1.25;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.line10 *,
+.line10 *::before,
+.line10 *::after {
+  box-sizing: border-box;
+}
+
+.line10 > :is(video, hls-video, hlsjs-video, native-hls-video, dash-video, shaka-video, mux-video) {
+  display: block;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  border-radius: inherit;
+  object-fit: var(--media-object-fit, contain);
+  object-position: var(--media-object-position, center);
+}
+
+/* Keyboard focus on the player itself: drawn as an overlay so the video
+   cannot cover it. */
+.line10:focus-visible::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  border: 3px solid var(--l10-focus-light);
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 3px var(--l10-focus-dark);
+  outline: 3px solid var(--l10-focus-dark);
+  outline-offset: -1px;
+  pointer-events: none;
+}
+
+.l10-poster {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.l10-poster:not([data-visible]),
+.l10-poster-image:not([src]):not([srcset]) {
+  display: none;
+}
+
+.l10-poster-image {
+  width: 100%;
+  height: 100%;
+  object-fit: var(--media-object-fit, contain);
+  object-position: var(--media-object-position, center);
+}
+
+/* Captions. Video.js v10 leaves cue rendering to the browser, so ::cue is the
+   only hook, and ::cue accepts colour, background, font, outline and
+   text-shadow but not border-radius or padding. The cue takes the sign's
+   surface and ink; the sign's corner radius cannot apply. The fallbacks cover
+   browsers that do not pass custom properties into ::cue. */
+.line10 > video::cue {
+  background: var(--l10-sign, rgb(12 13 15 / 0.94));
+  color: var(--l10-ink, #ffffff);
+  font-family: inherit;
+  font-weight: 600;
+}
+
+/* The sign is opaque, so cues drawn at the bottom of the video would sit
+   underneath it. While the sign is on screen the cue box moves up by the
+   sign's height. Blink and WebKit only: Firefox exposes no hook for the cue
+   box, so there the cues stay behind the sign until it hides. */
+.line10:has(.l10-controls[data-visible]) > video::-webkit-media-text-track-container,
+.line10:has(.l10-sign :focus-visible) > video::-webkit-media-text-track-container {
+  translate: 0 calc(var(--l10-sign-clearance) * -1);
+}
+
+.l10-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0); /* legacy browsers */
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ------------------------------------- 3. Controls surface and auto-hide */
+
+.l10-controls {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: stretch;
+  gap: calc(var(--l10-u) * 3);
+  padding: calc(var(--l10-u) * 4);
+  pointer-events: none;
+}
+
+.l10-controls > media-tooltip-group {
+  display: contents;
+}
+
+.l10-header,
+.l10-sign {
+  transition:
+    opacity var(--l10-show) var(--l10-ease),
+    translate var(--l10-show) var(--l10-ease);
+}
+
+/* Hidden while playing and idle. Keyboard focus inside always keeps the
+   controls on screen, so a focused control is never invisible. */
+.l10-controls:not([data-visible]):not(:has(:focus-visible)) :is(.l10-header, .l10-sign) {
+  opacity: 0;
+  pointer-events: none;
+  transition-duration: var(--l10-hide);
+}
+
+.l10-controls:not([data-visible]):not(:has(:focus-visible)) .l10-sign {
+  translate: 0 calc(var(--l10-u) * 3);
+}
+
+.l10-controls:not([data-visible]):not(:has(:focus-visible)) .l10-header {
+  translate: 0 calc(var(--l10-u) * -3);
+}
+
+/* :has() cannot nest, so the focus test sits on the container here. */
+.line10:not(:has(:focus-visible)):has(.l10-controls:not([data-visible])) {
+  cursor: none;
+}
+
+/* ------------------------------------------------------------ 4. Header */
+
+.l10-header {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: calc(var(--l10-u) * 2.5);
+  max-width: 100%;
+  padding: calc(var(--l10-u) * 1.5) calc(var(--l10-u) * 4) calc(var(--l10-u) * 1.5) calc(var(--l10-u) * 1.5);
+  border: var(--l10-keyline-width) solid var(--l10-keyline);
+  border-radius: calc(var(--l10-u) * 5);
+  background: var(--l10-sign);
+}
+
+.l10-header:has(.l10-title[data-hidden]) {
+  display: none;
+}
+
+.l10-title {
+  min-width: 0;
+  overflow: hidden;
+  font-size: calc(var(--l10-u) * 3.75);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.l10-bullet {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: calc(var(--l10-u) * 7);
+  height: calc(var(--l10-u) * 7);
+  border-radius: 50%;
+  background: var(--l10-line);
+  color: var(--l10-on-line);
+  font-size: calc(var(--l10-u) * 3.25);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+/* ------------------------------------ 5. Sign, bar, buttons and icons */
+
+.l10-sign {
+  display: grid;
+  gap: calc(var(--l10-u) * 0.5);
+  margin-top: auto;
+  padding: calc(var(--l10-u) * 2) calc(var(--l10-u) * 2) calc(var(--l10-u) * 1.5);
+  border: var(--l10-keyline-width) solid var(--l10-keyline);
+  border-radius: var(--l10-radius-sign);
+  background: var(--l10-sign);
+  pointer-events: auto;
+}
+
+.l10-bar,
+.l10-group {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--l10-u) * 1);
+  min-width: 0;
+}
+
+.l10-bar {
+  justify-content: space-between;
+}
+
+.l10-button {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--l10-target);
+  height: var(--l10-target);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--l10-radius);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  outline: none;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background-color var(--l10-fast) ease-out,
+    color var(--l10-fast) ease-out,
+    scale var(--l10-fast) ease-out;
+}
+
+@media (hover: hover) {
+  .l10-button:hover {
+    background: var(--l10-hover);
+  }
+}
+
+.l10-button:active {
+  scale: 0.92;
+}
+
+.l10-button[aria-expanded="true"] {
+  background: var(--l10-ink);
+  color: var(--l10-enamel);
+}
+
+.l10-button[data-hidden] {
+  display: none;
+}
+
+.l10-button:is([data-disabled], [aria-disabled="true"]) {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.l10-button:focus-visible,
+.l10-dialog-close:focus-visible {
+  z-index: 1;
+  outline: 3px solid var(--l10-focus-light);
+  outline-offset: 2px;
+  box-shadow:
+    0 0 0 2px var(--l10-focus-dark),
+    0 0 0 7px var(--l10-focus-dark);
+}
+
+/* The roundel: the one coloured control on the sign. */
+.l10-play {
+  border-radius: 50%;
+  background: var(--l10-line);
+  color: var(--l10-on-line);
+}
+
+@media (hover: hover) {
+  .l10-play:hover {
+    background: var(--l10-ink);
+    color: var(--l10-enamel);
+  }
+}
+
+.l10-icon {
+  display: block;
+  grid-area: 1 / 1;
+  width: var(--l10-icon);
+  height: var(--l10-icon);
+  overflow: visible;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.l10-icon .l10-solid,
+.l10-preview-pin .l10-solid {
+  fill: currentColor;
+  stroke: none;
+}
+
+/* One icon per state. The icon that appears pops in. */
+.l10-play:not([data-paused]) .l10-icon-play,
+.l10-play[data-paused] .l10-icon-pause,
+.l10-play:not([data-ended]) .l10-icon-replay,
+.l10-play[data-ended] :is(.l10-icon-play, .l10-icon-pause),
+.l10-mute .l10-icon,
+.l10-fullscreen:not([data-fullscreen]) .l10-icon-fullscreen-exit,
+.l10-fullscreen[data-fullscreen] .l10-icon-fullscreen-enter {
+  display: none;
+}
+
+.l10-mute:is([data-volume-level="high"], [data-volume-level="medium"], :not([data-volume-level])) .l10-icon-volume-high,
+.l10-mute[data-volume-level="low"] .l10-icon-volume-low,
+.l10-mute[data-volume-level="off"] .l10-icon-volume-off {
+  display: block;
+}
+
+.l10-play .l10-icon,
+.l10-mute .l10-icon,
+.l10-fullscreen .l10-icon {
+  animation: l10-pop var(--l10-show) var(--l10-ease);
+}
+
+@keyframes l10-pop {
+  from {
+    opacity: 0;
+    scale: 0.6;
+  }
+}
+
+/* ------------------------------------------------------ 6. Time display */
+
+.l10-time {
+  display: inline-flex;
+  align-items: baseline;
+  gap: calc(var(--l10-u) * 1.5);
+  padding-inline: calc(var(--l10-u) * 2.5);
+  font-size: calc(var(--l10-u) * 3.75);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.l10-time-separator,
+.l10-time-duration {
+  color: var(--l10-ink-2);
+  font-weight: 600;
+}
+
+/* ------------------------- 7. Line strip (time slider) and scrub preview */
+
+.l10-time-slider {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: var(--l10-strip);
+  margin-inline: calc(var(--l10-u) * 3.5);
+  container-type: inline-size; /* gives the stop markers 100cqw = line length */
+  cursor: pointer;
+  outline: none;
+  touch-action: none;
+  user-select: none;
+}
+
+.l10-time-slider[data-disabled] {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.l10-track {
+  position: absolute;
+  inset-inline: 0;
+  height: var(--l10-rail-width);
+  isolation: isolate;
+  border-radius: 99px;
+  background: var(--l10-rail);
+  /* Stops the departure signal at the terminus. Not overflow: hidden, which
+     would cut the stops: they stand taller than the rail (hence -100%) and
+     the first and last overhang its ends by half a stop. */
+  clip-path: inset(-100% calc(var(--l10-stop) / -2));
+}
+
+.l10-buffer,
+.l10-fill {
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  border-radius: inherit;
+}
+
+.l10-buffer {
+  width: var(--media-slider-buffer, 0%);
+  background: var(--l10-rail-buffered);
+}
+
+.l10-fill {
+  z-index: 2;
+  width: var(--media-slider-fill, 0%);
+  background: var(--l10-line);
+  /* Clip the travelled stops to the travelled distance, but let the first
+     stop overhang the start of the line. */
+  clip-path: inset(calc(var(--l10-stop) * -1) 0 calc(var(--l10-stop) * -1) calc(var(--l10-stop) * -1));
+}
+
+.l10-time-slider[data-dragging] .l10-fill {
+  width: var(--media-slider-pointer, 0%);
+}
+
+/* Stops: eleven markers, one every 10% of the line. Stops 0–9 are where the
+   number keys land; the eleventh is the terminus. Each is a tile of a
+   repeating background, so there is no extra markup. */
+.l10-track::before,
+.l10-fill::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: calc(var(--l10-stop) / -2);
+  width: calc(100cqw + var(--l10-stop));
+  height: var(--l10-stop);
+  translate: 0 -50%;
+  background-repeat: repeat-x;
+  background-size: 10cqw 100%;
+  pointer-events: none;
+}
+
+/* Ahead: a hollow stop. */
+.l10-track::before {
+  z-index: 1;
+  background-image: radial-gradient(
+    circle at calc(var(--l10-stop) / 2) 50%,
+    var(--l10-enamel) 0 calc(var(--l10-stop) * 0.28),
+    var(--l10-rail-buffered) calc(var(--l10-stop) * 0.3) calc(var(--l10-stop) * 0.48),
+    transparent calc(var(--l10-stop) * 0.5)
+  );
+}
+
+/* Behind: a white stop ringed in enamel, the classic interchange marker. */
+.l10-fill::before {
+  background-image: radial-gradient(
+    circle at calc(var(--l10-stop) / 2) 50%,
+    var(--l10-ink) 0 calc(var(--l10-stop) * 0.24),
+    var(--l10-enamel) calc(var(--l10-stop) * 0.26) calc(var(--l10-stop) * 0.48),
+    transparent calc(var(--l10-stop) * 0.5)
+  );
+}
+
+/* Departure: when playback starts, a signal runs down the line ahead. */
+.l10-track::after {
+  content: "";
+  position: absolute;
+  inset-block: -1px;
+  left: var(--media-slider-fill, 0%);
+  z-index: 3;
+  width: 28%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, transparent, var(--l10-ink) 45%, transparent);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.line10:has(.l10-play[data-started]:not([data-paused])) .l10-track::after {
+  animation: l10-depart 900ms ease-out 1;
+}
+
+@keyframes l10-depart {
+  from {
+    opacity: 0.95;
+    translate: 0;
+  }
+  to {
+    opacity: 0;
+    translate: 240%;
+  }
+}
+
+/* The marker: a small roundel that shows where you are on the line. */
+.l10-thumb {
+  position: absolute;
+  top: 50%;
+  left: var(--media-slider-fill, 0%);
+  z-index: 4;
+  width: calc(var(--l10-u) * 5);
+  height: calc(var(--l10-u) * 5);
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    var(--l10-ink) 0 30%,
+    var(--l10-enamel) 33% 56%,
+    var(--l10-line) 59%
+  );
+  box-shadow: 0 0 0 2px var(--l10-enamel);
+  outline: none;
+  transition: scale var(--l10-fast) ease-out;
+}
+
+.l10-time-slider[data-dragging] .l10-thumb {
+  left: var(--media-slider-pointer, 0%);
+}
+
+.l10-time-slider:is([data-pointing], [data-dragging]) .l10-thumb,
+.l10-volume-slider:is([data-pointing], [data-dragging]) .l10-thumb {
+  scale: 1.2;
+}
+
+/* The thumb is the focusable part (role="slider"), not the slider root. */
+.l10-thumb:focus-visible {
+  outline: 3px solid var(--l10-focus-light);
+  outline-offset: 3px;
+  box-shadow:
+    0 0 0 3px var(--l10-focus-dark),
+    0 0 0 8px var(--l10-focus-dark);
+}
+
+/* Holding at a station: the marker pulses a few times after pausing. */
+.line10:has(.l10-play[data-started][data-paused]:not([data-ended])) .l10-time-slider .l10-thumb::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 2px solid var(--l10-line);
+  border-radius: 50%;
+  opacity: 0;
+  animation: l10-hold 1400ms ease-out 3;
+}
+
+@keyframes l10-hold {
+  from {
+    opacity: 0.9;
+    scale: 1;
+  }
+  to {
+    opacity: 0;
+    scale: 2.4;
+  }
+}
+
+/* Scrub preview: a small sign above the line with the frame and time. */
+.l10-preview {
+  position: absolute;
+  bottom: calc(100% + var(--l10-u) * 3);
+  z-index: 20;
+  display: grid;
+  justify-items: center;
+  gap: calc(var(--l10-u) * 1);
+  padding: calc(var(--l10-u) * 1);
+  border: var(--l10-keyline-width) solid var(--l10-ink);
+  border-radius: var(--l10-radius);
+  background: var(--l10-enamel);
+  box-shadow: 0 0 0 var(--l10-keyline-width) var(--l10-enamel);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--l10-fast) ease-out;
+}
+
+.l10-time-slider:is([data-pointing], [data-dragging]):not([data-disabled]) .l10-preview {
+  opacity: 1;
+}
+
+.l10-thumbnail {
+  display: block;
+  max-width: calc(var(--l10-u) * 40);
+  overflow: hidden;
+  border-radius: calc(var(--l10-radius) - var(--l10-u) * 1);
+  background: #000;
+}
+
+/* No storyboard track (or it failed to load): the preview shows the time only. */
+.l10-thumbnail:is([data-hidden], [data-error], [hidden]) {
+  display: none;
+}
+
+.l10-preview-label {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--l10-u) * 1.5);
+  padding: 0 calc(var(--l10-u) * 2) calc(var(--l10-u) * 0.5) calc(var(--l10-u) * 1);
+  font-size: calc(var(--l10-u) * 3.5);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.l10-preview-pin {
+  width: calc(var(--l10-u) * 4);
+  height: calc(var(--l10-u) * 4);
+  fill: none;
+  stroke: var(--l10-line);
+  stroke-width: 3.5;
+  color: var(--l10-ink);
+}
+
+/* ------------------- 8. Popups: tooltip, volume, keyboard timetable */
+
+.l10-popup {
+  z-index: 30;
+  margin: 0;
+  overflow: visible;
+  border: var(--l10-keyline-width) solid var(--l10-ink);
+  border-radius: var(--l10-radius);
+  background: var(--l10-enamel);
+  box-shadow: 0 0 0 var(--l10-keyline-width) var(--l10-enamel);
+  color: var(--l10-ink);
+  transition:
+    opacity var(--l10-fast) ease-out,
+    translate var(--l10-fast) ease-out;
+}
+
+.l10-popup:not([data-open]),
+.l10-popup[data-hidden] {
+  display: none;
+}
+
+.l10-popup:is([data-starting-style], [data-ending-style]) {
+  opacity: 0;
+  translate: 0 calc(var(--l10-u) * 1.5);
+}
+
+.l10-tooltip {
+  --media-tooltip-side-offset: var(--l10-popup-offset);
+  padding: calc(var(--l10-u) * 1.5) calc(var(--l10-u) * 2.5);
+  font-size: calc(var(--l10-u) * 3.25);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.l10-tooltip[data-open] {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--l10-u) * 2);
+}
+
+.l10-kbd {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.75em;
+  padding: 0.15em 0.45em;
+  border-radius: calc(var(--l10-u) * 1);
+  background: var(--l10-ink);
+  color: var(--l10-enamel);
+  font: inherit;
+  font-size: 0.875em;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.l10-kbd:empty {
+  display: none;
+}
+
+/* Volume: a short vertical branch of the same line. */
+.l10-volume {
+  --media-popover-side-offset: var(--l10-popup-offset);
+  width: var(--l10-target);
+  height: calc(var(--l10-u) * 34);
+  /* The popover is in the top layer, so the player's overflow: hidden cannot
+     clip it. Cap it at the room the component measures above the trigger. */
+  max-height: var(--media-popover-available-height, none);
+  padding: calc(var(--l10-u) * 4.5) 0;
+}
+
+.l10-volume-slider {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+  outline: none;
+  touch-action: none;
+  user-select: none;
+}
+
+.l10-volume-track {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: var(--l10-rail-width);
+  height: 100%;
+  translate: -50% 0;
+  overflow: hidden;
+  border-radius: 99px;
+  background: var(--l10-rail);
+}
+
+.l10-volume-fill {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: var(--media-slider-fill, 0%);
+  background: var(--l10-line);
+}
+
+.l10-volume-thumb {
+  top: auto;
+  bottom: var(--media-slider-fill, 0%);
+  left: 50%;
+  translate: -50% 50%;
+}
+
+.l10-volume-slider[data-dragging] .l10-volume-thumb {
+  bottom: var(--media-slider-pointer, 0%);
+}
+
+.l10-volume-slider[data-dragging] .l10-volume-fill {
+  height: var(--media-slider-pointer, 0%);
+}
+
+/* Keyboard timetable: shortcuts listed as stops along the route. */
+.l10-timetable {
+  --media-popover-side-offset: var(--l10-popup-offset);
+  width: calc(var(--l10-u) * 88);
+  max-width: calc(100cqw - var(--l10-u) * 8);
+  max-height: var(--media-popover-available-height, none);
+  overflow: auto;
+  text-align: start;
+  padding: calc(var(--l10-u) * 4) calc(var(--l10-u) * 4.5) calc(var(--l10-u) * 3);
+  font-size: calc(var(--l10-u) * 3.5);
+}
+
+.l10-timetable-title {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--l10-u) * 2.5);
+  margin: 0 0 calc(var(--l10-u) * 3);
+  font-size: calc(var(--l10-u) * 4);
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.l10-route {
+  position: relative;
+  display: grid;
+  margin: 0;
+  padding: 0 0 0 calc(var(--l10-u) * 7);
+}
+
+/* The route line down the left edge. */
+.l10-route::before {
+  content: "";
+  position: absolute;
+  inset-block: calc(var(--l10-u) * 3.5);
+  left: calc(var(--l10-u) * 2.75);
+  width: var(--l10-rail-width);
+  border-radius: 99px;
+  background: var(--l10-line);
+}
+
+.l10-stop {
+  position: relative;
+  display: grid;
+  grid-template-columns: calc(var(--l10-u) * 22) 1fr;
+  align-items: center;
+  gap: calc(var(--l10-u) * 3);
+  min-height: calc(var(--l10-u) * 9);
+  padding-block: calc(var(--l10-u) * 1);
+}
+
+.l10-stop + .l10-stop {
+  border-top: 1px solid var(--l10-divider);
+}
+
+.l10-stop::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: calc(var(--l10-u) * -5.25);
+  width: calc(var(--l10-u) * 3.5);
+  height: calc(var(--l10-u) * 3.5);
+  translate: 0 -50%;
+  border: calc(var(--l10-u) * 0.875) solid var(--l10-enamel);
+  border-radius: 50%;
+  background: var(--l10-ink);
+}
+
+.l10-stop dt {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--l10-u) * 1);
+}
+
+.l10-stop dd {
+  margin: 0;
+  color: var(--l10-ink);
+  font-weight: 600;
+}
+
+/* ------------- 9. Feedback: buffering, indicators and the error dialog */
+
+.l10-buffering {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.l10-buffering:not([data-visible]) {
+  display: none;
+}
+
+/* While the sign is on screen, centre in the footage above it, as the
+   indicators do. With the sign hidden it goes back to the true centre. */
+.line10:has(.l10-controls[data-visible]) .l10-buffering,
+.line10:has(.l10-sign :focus-visible) .l10-buffering {
+  padding-bottom: var(--l10-sign-clearance);
+}
+
+.l10-buffering-sign {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--l10-u) * 5);
+  padding: calc(var(--l10-u) * 4) calc(var(--l10-u) * 5);
+  border: var(--l10-keyline-width) solid var(--l10-keyline);
+  border-radius: 99px;
+  background: var(--l10-sign);
+}
+
+.l10-buffering-sign::before {
+  content: "";
+  position: absolute;
+  inset-inline: calc(var(--l10-u) * 6.5);
+  top: 50%;
+  height: var(--l10-rail-width);
+  translate: 0 -50%;
+  background: var(--l10-rail);
+}
+
+.l10-buffering-sign i {
+  position: relative;
+  width: calc(var(--l10-u) * 4);
+  height: calc(var(--l10-u) * 4);
+  border: calc(var(--l10-u) * 0.875) solid var(--l10-rail-buffered);
+  border-radius: 50%;
+  background: var(--l10-enamel);
+  animation: l10-approach 1200ms steps(1, end) infinite;
+}
+
+.l10-buffering-sign i:nth-child(2) {
+  animation-delay: 400ms;
+}
+
+.l10-buffering-sign i:nth-child(3) {
+  animation-delay: 800ms;
+}
+
+@keyframes l10-approach {
+  0%,
+  33% {
+    border-color: var(--l10-line);
+    background: var(--l10-ink);
+  }
+  34%,
+  100% {
+    border-color: var(--l10-rail-buffered);
+    background: var(--l10-enamel);
+  }
+}
+
+.l10-indicators {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  /* Centred in the footage above the sign, not in the player: on a short
+     player the true centre is where the sign begins. */
+  padding-bottom: var(--l10-sign-clearance);
+  pointer-events: none;
+}
+
+.l10-indicator {
+  display: flex;
+  grid-area: 1 / 1;
+  align-items: center;
+  gap: calc(var(--l10-u) * 2);
+  padding: calc(var(--l10-u) * 1.5) calc(var(--l10-u) * 4) calc(var(--l10-u) * 1.5) calc(var(--l10-u) * 3);
+  border: var(--l10-keyline-width) solid var(--l10-ink);
+  border-radius: 99px;
+  background: var(--l10-enamel);
+  box-shadow: 0 0 0 var(--l10-keyline-width) var(--l10-enamel);
+  font-size: calc(var(--l10-u) * 3.75);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  transition: opacity var(--l10-fast) ease-out;
+}
+
+.l10-indicator:not([data-open]) {
+  display: none;
+}
+
+.l10-indicator:is([data-starting-style], [data-ending-style]) {
+  opacity: 0;
+}
+
+.l10-indicator-fill {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--l10-u) * 2);
+}
+
+.l10-seek-indicator[data-direction="backward"] .l10-icon {
+  scale: -1 1;
+}
+
+.l10-dialog-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  background: var(--l10-enamel);
+}
+
+.l10-dialog {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 50;
+  display: grid;
+  gap: calc(var(--l10-u) * 3);
+  width: calc(100% - var(--l10-u) * 8);
+  max-width: calc(var(--l10-u) * 96);
+  max-height: calc(100% - var(--l10-u) * 8);
+  overflow: auto;
+  translate: -50% -50%;
+  padding: calc(var(--l10-u) * 7) calc(var(--l10-u) * 5) calc(var(--l10-u) * 5);
+  border: var(--l10-keyline-width) solid var(--l10-ink);
+  border-radius: var(--l10-radius);
+  /* Hazard tape along the top edge. */
+  background:
+    repeating-linear-gradient(
+        -45deg,
+        var(--l10-line) 0 calc(var(--l10-u) * 3),
+        var(--l10-enamel) calc(var(--l10-u) * 3) calc(var(--l10-u) * 6)
+      )
+      top / 100% calc(var(--l10-u) * 2.5) no-repeat,
+    var(--l10-enamel);
+  color: var(--l10-ink);
+  outline: none;
+}
+
+.l10-dialog:not([data-open]),
+.l10-dialog-backdrop:not([data-open]) {
+  display: none;
+}
+
+.l10-dialog:is([data-scope="document"]),
+.l10-dialog-backdrop:is([data-scope="document"]) {
+  position: fixed;
+}
+
+.l10-dialog-title {
+  font-size: calc(var(--l10-u) * 5);
+  font-weight: 800;
+}
+
+.l10-dialog-description {
+  color: var(--l10-ink-2);
+  font-size: calc(var(--l10-u) * 3.75);
+}
+
+.l10-dialog-close {
+  display: inline-grid;
+  justify-self: end;
+  place-items: center;
+  min-width: calc(var(--l10-u) * 24);
+  height: var(--l10-target);
+  padding-inline: calc(var(--l10-u) * 5);
+  border-radius: 99px;
+  background: var(--l10-line);
+  color: var(--l10-on-line);
+  font-weight: 800;
+  cursor: pointer;
+  outline: none;
+  touch-action: manipulation;
+}
+
+/* ------------------------------------------ 10. Small players and touch */
+
+@container l10-root (width < 30rem) {
+  /* A container query cannot style its own container, so the tokens that
+     change with the tighter layout are set on the player's children and
+     inherited from there. Clearance: 1.5u + 0.5u + 0.5u + 1u of padding and
+     gap. Radius: the buttons' 2.5u plus the sign's 1u padding, so the two
+     corners stay concentric. */
+  .line10 > * {
+    --l10-sign-clearance: calc(var(--l10-strip) + var(--l10-target) + var(--l10-u) * 3.5);
+    --l10-radius-sign: calc(var(--l10-u) * 3.5);
+  }
+
+  .l10-controls {
+    gap: calc(var(--l10-u) * 1.5);
+    padding: calc(var(--l10-u) * 1.5);
+  }
+
+  .l10-sign {
+    padding: calc(var(--l10-u) * 1) calc(var(--l10-u) * 1) calc(var(--l10-u) * 0.5);
+  }
+
+  /* A phone-sized player has no room for a header as well as the sign. It
+     leaves the screen but stays in the accessibility tree, so the title is
+     still announced. */
+  .l10-header {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    border: 0;
+    clip: rect(0, 0, 0, 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .l10-time {
+    padding-inline: calc(var(--l10-u) * 1.5);
+  }
+
+  /* The timetable is taller than a phone-sized player. */
+  .l10-help {
+    display: none;
+  }
+
+  /* The scrub preview keeps its time but drops the frame, which would be
+     cut off by the top of the player. */
+  .l10-thumbnail {
+    display: none;
+  }
+
+  /* Less padding leaves more of the capped volume popover for the slider. */
+  .l10-volume {
+    padding-block: calc(var(--l10-u) * 3.5);
+  }
+}
+
+/* Short viewports: banner embeds and iframes. This keys on the viewport, not
+   the player, because a height container query needs `container-type: size`,
+   which would stop the player taking its height from the video. The sign is
+   untouched; the header leaves the screen but stays in the accessibility
+   tree, so the title is still announced. */
+@media (max-height: 20rem) {
+  .l10-controls {
+    gap: calc(var(--l10-u) * 1.5);
+    padding: calc(var(--l10-u) * 1.5);
+  }
+
+  .l10-header {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    border: 0;
+    clip: rect(0, 0, 0, 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+/* Touch: the line strip gets a full 48px target of its own. */
+@media (pointer: coarse) {
+  .line10 {
+    --l10-strip: var(--l10-target);
+  }
+
+  .l10-sign {
+    gap: 0;
+  }
+}
+
+/* Wide fullscreen displays are watched from further away. */
+@media (min-width: 1920px) {
+  .line10:fullscreen {
+    --l10-u: calc(var(--media-scale-unit, 1rem) / 4 * 1.5);
+  }
+}
+
+/* ---- 11. User preferences: contrast, transparency, forced colors, motion */
+
+/* The sign becomes fully opaque, so nothing of the footage shows through. */
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  .line10 {
+    --l10-sign-alpha: 1;
+    --l10-keyline: #ffffff;
+    --l10-hover: #3a3d42;
+    --l10-divider: #414244; /* the 22% white rule, flattened onto the enamel */
+  }
+}
+
+@media (prefers-contrast: more) {
+  .line10 {
+    --l10-ink-2: #ffffff;
+    /* Darker, not lighter: the travelled route has to stand out from the rest
+       of the line (4.3:1 and 3.2:1), and the rail still has to stand out from
+       the sign (3.1:1). */
+    --l10-rail: #5c6169;
+    --l10-rail-buffered: #6e747d;
+    --l10-divider: #ffffff;
+    --l10-keyline-width: 2px;
+  }
+
+  /* Every control gets a visible boundary (the focus ring replaces it). */
+  .l10-button:not(.l10-play):not(:focus-visible) {
+    box-shadow: inset 0 0 0 1.5px var(--l10-ink);
+  }
+}
+
+@media (forced-colors: active) {
+  .line10 > video::cue {
+    background: Canvas;
+    color: CanvasText;
+  }
+
+  .l10-sign,
+  .l10-header,
+  .l10-popup,
+  .l10-preview,
+  .l10-indicator,
+  .l10-dialog,
+  .l10-buffering-sign {
+    border: 1px solid CanvasText;
+    background: Canvas;
+  }
+
+  .l10-button,
+  .l10-dialog-close {
+    border: 1px solid ButtonText;
+    background: ButtonFace;
+    color: ButtonText;
+  }
+
+  .l10-button:focus-visible,
+  .l10-dialog-close:focus-visible,
+  .l10-thumb:focus-visible {
+    outline: 3px solid Highlight;
+    outline-offset: 2px;
+    box-shadow: none;
+  }
+
+  /* Player focus: one system-colour ring instead of the light/dark sandwich. */
+  .line10:focus-visible::after {
+    border-color: Highlight;
+    outline: none;
+    box-shadow: none;
+  }
+
+  /* Popup open: the state the white fill carries in normal colours. */
+  .l10-button[aria-expanded="true"] {
+    border-color: Highlight;
+    background: Highlight;
+    color: HighlightText;
+  }
+
+  .l10-button:is([data-disabled], [aria-disabled="true"]) {
+    border-color: GrayText;
+    color: GrayText;
+    opacity: 1;
+  }
+
+  /* Shapes drawn with background colour alone need an edge or a system fill. */
+  .l10-kbd,
+  .l10-bullet {
+    border: 1px solid CanvasText;
+  }
+
+  .l10-route::before,
+  .l10-stop::before {
+    border-color: Canvas;
+    background: CanvasText;
+  }
+
+  .l10-preview-pin {
+    color: CanvasText;
+    stroke: CanvasText;
+  }
+
+  .l10-track,
+  .l10-volume-track,
+  .l10-fill,
+  .l10-volume-fill,
+  .l10-buffer,
+  .l10-thumb {
+    forced-color-adjust: none;
+  }
+
+  .l10-track,
+  .l10-volume-track {
+    background: Canvas;
+    outline: 1px solid CanvasText;
+  }
+
+  .l10-buffer {
+    background: GrayText;
+  }
+
+  .l10-fill,
+  .l10-volume-fill {
+    background: Highlight;
+  }
+
+  .l10-thumb {
+    border: 2px solid CanvasText;
+    background: Highlight;
+    box-shadow: none;
+  }
+
+  /* Stops stay visible. Gradients are not recoloured by the system, so they
+     are redrawn in system colours: hollow ahead, a dot in the line behind. */
+  .l10-track::before {
+    background-image: radial-gradient(
+      circle at calc(var(--l10-stop) / 2) 50%,
+      Canvas 0 calc(var(--l10-stop) * 0.28),
+      CanvasText calc(var(--l10-stop) * 0.3) calc(var(--l10-stop) * 0.48),
+      transparent calc(var(--l10-stop) * 0.5)
+    );
+  }
+
+  .l10-fill::before {
+    background-image: radial-gradient(
+      circle at calc(var(--l10-stop) / 2) 50%,
+      HighlightText 0 calc(var(--l10-stop) * 0.24),
+      Highlight calc(var(--l10-stop) * 0.26) calc(var(--l10-stop) * 0.48),
+      transparent calc(var(--l10-stop) * 0.5)
+    );
+  }
+
+  .l10-track::after {
+    display: none;
+  }
+}
+
+/* Reduced motion: every state change is instant. */
+@media (prefers-reduced-motion: reduce) {
+  .line10,
+  .line10 *,
+  .line10 *::before,
+  .line10 *::after {
+    transition-duration: 0s !important;
+    transition-delay: 0s !important;
+    animation: none !important;
+  }
+
+  .l10-controls:not([data-visible]):not(:has(:focus-visible)) :is(.l10-header, .l10-sign),
+  .l10-popup:is([data-starting-style], [data-ending-style]) {
+    translate: none;
+  }
+
+  /* Without the sequence, the middle stop stays lit so the sign still reads
+     as "waiting". */
+  .l10-buffering-sign i:nth-child(2) {
+    border-color: var(--l10-line);
+    background: var(--l10-ink);
+  }
+}

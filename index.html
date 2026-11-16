@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Line 10 — Video.js v10 skin workbench</title>
+
+    <!-- No build step: map the package specifiers skin.js imports to the
+         version-pinned CDN bundles. With a bundler, delete this map. -->
+    <script type="importmap">
+      {
+        "imports": {
+          "@videojs/html/video/player": "https://cdn.jsdelivr.net/npm/@videojs/cdn@10.3.0/video-player.js",
+          "@videojs/html/media/mux-video": "https://cdn.jsdelivr.net/npm/@videojs/cdn@10.3.0/media/mux-video.js",
+          "@videojs/html/i18n": "https://cdn.jsdelivr.net/npm/@videojs/cdn@10.3.0/i18n.js",
+          "@videojs/html/ui/container": "https://cdn.jsdelivr.net/npm/@videojs/cdn@10.3.0/ui/container.js",
+          "@videojs/html/ui/poster": "https://cdn.jsdelivr.net/npm/@videojs/cdn@10.3.0/ui/poster.js",
+          "@videojs/html/ui/error-dialog": "https://cdn.jsdelivr.net/npm/@videojs/cdn@10.3.0/ui/error-dialog.js",
+          "@videojs/html/ui/dialog-backdrop": "https://cdn.jsdelivr.net/npm/@videojs/cdn@10.3.0/ui/dialog-backdrop.js",
+          "@videojs/html/ui/dialog-popup": "https://cdn.jsdelivr.net/npm/@videojs/cdn@10.3.0/ui/dialog-popup.js",
+          "@videojs/html/ui/dialog-title": "https://cdn.jsdelivr.net/npm/@videojs/cdn@10.3.0/ui/dialog-title.js",
+          "@videojs/html/ui/dialog-description": "https://cdn.jsdelivr.net/npm/@videojs/cdn@10.3.0/ui/dialog-description.js",
+          "@videojs/html/ui/dialog-close": "https://cdn.jsdelivr.net/npm/@videojs/cdn@10.3.0/ui/dialog-close.js",
+          "@videojs/html/ui/controls": "https://cdn.jsdelivr.net/npm/@videojs/cdn@10.3.0/ui/controls.js",
+          "@videojs/html/ui/controls-content": "https://cdn.jsdelivr.net/npm/@videojs/cdn@10.3.0/ui/controls-content.js",
+          "@videojs/html/ui/controls-group": "https://cdn.jsdelivr.net/npm/@videojs/cdn@10.3.0/ui/controls-group.js",
+          "@videojs/html/ui/buffering-indicator": "https://cdn.jsdelivr.net/npm/@videojs/cdn@10.3.0/ui/buffering-indicator.js",
+          "@videojs/html/ui/title": "https://cdn.jsdelivr.net/npm/@videojs/cdn@10.3.0/ui/title.js",
+          "@videojs/html/ui/tooltip-group": "https://cdn.jsdelivr.net/npm/@videojs/cdn@10.3.0/ui/tooltip-group.js",
+          "@videojs/html/ui/tooltip": "https://cdn.jsdelivr.net/npm/@videojs/cdn@10.3.0/ui/tooltip.js",
+          "@videojs/html/ui/tooltip-label": "https://cdn.jsdelivr.net/npm/@videojs/cdn@10.3.0/ui/tooltip-label.js",
+          "@videojs/html/ui/tooltip-shortcut": "https://cdn.jsdelivr.net/npm/@videojs/cdn@10.3.0/ui/tooltip-shortcut.js",
+          "@videojs/html/ui/play-button": "https://cdn.jsdelivr.net/npm/@videojs/cdn@10.3.0/ui/play-button.js",
+          "@videojs/html/ui/time-group": "https://cdn.jsdelivr.net/npm/@videojs/cdn@10.3.0/ui/time-group.js",
+          "@videojs/html/ui/time": "https://cdn.jsdelivr.net/npm/@videojs/cdn@10.3.0/ui/time.js",
+          "@videojs/html/ui/time-separator": "https://cdn.jsdelivr.net/npm/@videojs/cdn@10.3.0/ui/time-separator.js",
+          "@videojs/html/ui/time-slider": "https://cdn.jsdelivr.net/npm/@videojs/cdn@10.3.0/ui/time-slider.js",
+          "@videojs/html/ui/slider-track": "https://cdn.jsdelivr.net/npm/@videojs/cdn@10.3.0/ui/slider-track.js",
+          "@videojs/html/ui/slider-buffer": "https://cdn.jsdelivr.net/npm/@videojs/cdn@10.3.0/ui/slider-buffer.js",
+          "@videojs/html/ui/slider-fill": "https://cdn.jsdelivr.net/npm/@videojs/cdn@10.3.0/ui/slider-fill.js",
+          "@videojs/html/ui/slider-thumb": "https://cdn.jsdelivr.net/npm/@videojs/cdn@10.3.0/ui/slider-thumb.js",
+          "@videojs/html/ui/slider-preview": "https://cdn.jsdelivr.net/npm/@videojs/cdn@10.3.0/ui/slider-preview.js",
+          "@videojs/html/ui/slider-thumbnail": "https://cdn.jsdelivr.net/npm/@videojs/cdn@10.3.0/ui/slider-thumbnail.js",
+          "@videojs/html/ui/slider-value": "https://cdn.jsdelivr.net/npm/@videojs/cdn@10.3.0/ui/slider-value.js",
+          "@videojs/html/ui/mute-button": "https://cdn.jsdelivr.net/npm/@videojs/cdn@10.3.0/ui/mute-button.js",
+          "@videojs/html/ui/volume-popover": "https://cdn.jsdelivr.net/npm/@videojs/cdn@10.3.0/ui/volume-popover.js",
+          "@videojs/html/ui/volume-slider": "https://cdn.jsdelivr.net/npm/@videojs/cdn@10.3.0/ui/volume-slider.js",
+          "@videojs/html/ui/popover": "https://cdn.jsdelivr.net/npm/@videojs/cdn@10.3.0/ui/popover.js",
+          "@videojs/html/ui/fullscreen-button": "https://cdn.jsdelivr.net/npm/@videojs/cdn@10.3.0/ui/fullscreen-button.js",
+          "@videojs/html/ui/hotkey": "https://cdn.jsdelivr.net/npm/@videojs/cdn@10.3.0/ui/hotkey.js",
+          "@videojs/html/ui/gesture": "https://cdn.jsdelivr.net/npm/@videojs/cdn@10.3.0/ui/gesture.js",
+          "@videojs/html/ui/status-announcer": "https://cdn.jsdelivr.net/npm/@videojs/cdn@10.3.0/ui/status-announcer.js",
+          "@videojs/html/ui/volume-indicator": "https://cdn.jsdelivr.net/npm/@videojs/cdn@10.3.0/ui/volume-indicator.js",
+          "@videojs/html/ui/volume-indicator-fill": "https://cdn.jsdelivr.net/npm/@videojs/cdn@10.3.0/ui/volume-indicator-fill.js",
+          "@videojs/html/ui/volume-indicator-value": "https://cdn.jsdelivr.net/npm/@videojs/cdn@10.3.0/ui/volume-indicator-value.js",
+          "@videojs/html/ui/seek-indicator": "https://cdn.jsdelivr.net/npm/@videojs/cdn@10.3.0/ui/seek-indicator.js",
+          "@videojs/html/ui/seek-indicator-value": "https://cdn.jsdelivr.net/npm/@videojs/cdn@10.3.0/ui/seek-indicator-value.js"
+        }
+      }
+    </script>
+
+    <link rel="stylesheet" href="./skin.css">
+    <link rel="stylesheet" href="./workbench.css">
+
+    <script type="module">
+      import '@videojs/html/video/player';
+      // Video.js v10's own <mux-video> media component. The standalone
+      // @mux/mux-video package registers the same tag, but the v10 player
+      // does not attach to it: the stream loads and every control stays dead.
+      import '@videojs/html/media/mux-video';
+      import './skin.js';
+
+      // Single source of truth: the workbench injects skin.html as-is and
+      // swaps the placeholder comment for the media element. The media is a
+      // Mux-hosted HLS stream: <mux-video> sits directly inside the skin's
+      // container. It adds the storyboard track for this playback ID itself
+      // (that is what feeds the scrub preview), so a <track> written here
+      // would only load the same storyboard a second time.
+      const MUX = 'dn029aVN3wwiZSugFAIfMlNI801YPVYn6QfjMQOFBGSJU';
+      const MEDIA = `
+        <mux-video
+          src="https://stream.mux.com/${MUX}.m3u8"
+          poster="https://image.mux.com/${MUX}/thumbnail.jpg"
+          crossorigin playsinline>
+        </mux-video>`;
+
+      const markup = await (await fetch('./skin.html')).text();
+      document.querySelector('video-player').innerHTML = markup.replace(
+        '<!-- Add a compatible media component here. -->',
+        MEDIA,
+      );
+
+      // Workbench switches. Footage and size are attributes on the stage that
+      // workbench.css reads. Line colour sets the skin's two public accent
+      // properties on the player itself, exactly as a site using it would.
+      const stage = document.querySelector('.wb-stage');
+      const player = stage.querySelector('.line10');
+      for (const input of document.querySelectorAll('.wb-switch input')) {
+        input.addEventListener('change', () => {
+          if (!input.checked) return;
+          if (input.name === 'accent') {
+            player.style.setProperty('--media-accent-color', input.value);
+            player.style.setProperty('--media-accent-text-color', input.dataset.text);
+          } else {
+            stage.dataset[input.name] = input.value;
+          }
+        });
+      }
+    </script>
+  </head>
+
+  <body>
+    <main class="wb">
+      <header class="wb-head">
+        <h1>Line 10</h1>
+        <p>A transit-wayfinding skin for Video.js v10. Use the switches to test worst-case footage, a phone-sized player and other line colours, then put the mouse away and drive it from the keyboard.</p>
+      </header>
+
+      <form class="wb-toolbar" aria-label="Test conditions">
+        <fieldset class="wb-switch">
+          <legend>Footage</legend>
+          <label><input type="radio" name="footage" value="original" checked> Original</label>
+          <label><input type="radio" name="footage" value="white"> Bright white</label>
+          <label><input type="radio" name="footage" value="black"> Pitch black</label>
+        </fieldset>
+        <fieldset class="wb-switch">
+          <legend>Player size</legend>
+          <label><input type="radio" name="size" value="desktop" checked> Desktop 1280 × 720</label>
+          <label><input type="radio" name="size" value="mobile"> Mobile 375 × 211</label>
+        </fieldset>
+        <!-- data-text is the colour drawn on top of the line colour. All three
+             take the dark enamel: white on the red is 4.23:1, under 4.5:1. -->
+        <fieldset class="wb-switch wb-swatches">
+          <legend>Line colour</legend>
+          <label style="--swatch: #ffd200"><input type="radio" name="accent" value="#ffd200" data-text="#0c0d0f" checked> Line 10 Yellow</label>
+          <label style="--swatch: #e53935"><input type="radio" name="accent" value="#e53935" data-text="#0c0d0f"> Express Red</label>
+          <label style="--swatch: #00acc1"><input type="radio" name="accent" value="#00acc1" data-text="#0c0d0f"> Metro Cyan</label>
+        </fieldset>
+      </form>
+
+      <div class="wb-stage" data-footage="original" data-size="desktop">
+        <video-player content-title="Northbound to the coast"></video-player>
+      </div>
+
+      <section class="wb-notes" aria-labelledby="wb-keys">
+        <h2 id="wb-keys">Keyboard test</h2>
+        <ol>
+          <li>Press <kbd>Tab</kbd> until the player has a focus ring, then <kbd>Space</kbd> to play.</li>
+          <li>Press <kbd>0</kbd>–<kbd>9</kbd> to jump between the ten stops on the line; <kbd>←</kbd> <kbd>→</kbd> seek, <kbd>↑</kbd> <kbd>↓</kbd> change volume, <kbd>M</kbd> mutes, <kbd>F</kbd> goes fullscreen.</li>
+          <li>Press <kbd>?</kbd> for the keyboard timetable and <kbd>Esc</kbd> to close it.</li>
+          <li>Keep pressing <kbd>Tab</kbd> to reach every control; arrow keys move the sliders.</li>
+        </ol>
+      </section>
+
+      <section class="wb-specs" aria-labelledby="wb-specs">
+        <h2 id="wb-specs">Specs and accessibility</h2>
+        <dl>
+          <div>
+            <dt>Built on</dt>
+            <dd>@videojs/html 10.3.0 UI components, composed from the Scaffold skin source</dd>
+          </div>
+          <div>
+            <dt>Dependencies</dt>
+            <dd>None beyond Video.js: no webfont, icon library or framework</dd>
+          </div>
+          <div>
+            <dt>Contrast</dt>
+            <dd>17.1:1 for text on the sign over pure white footage, the worst case</dd>
+          </div>
+          <div>
+            <dt>Touch targets</dt>
+            <dd>48 × 48 px minimum, held at any scale</dd>
+          </div>
+          <div>
+            <dt>Forced colors</dt>
+            <dd>Route, station stops and focus rings redrawn in system colours</dd>
+          </div>
+          <div>
+            <dt>Transparency and motion</dt>
+            <dd>Opaque sign for reduced transparency; instant state changes for reduced motion</dd>
+          </div>
+          <div>
+            <dt>Several players</dt>
+            <dd>IDs are scoped per instance, so players on one page never share a popup</dd>
+          </div>
+        </dl>
+      </section>
+    </main>
+  </body>
+</html>
